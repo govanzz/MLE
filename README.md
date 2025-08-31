@@ -28,19 +28,19 @@ Through this course, I aim to go beyond just applying ML models I will be **able
 
 This repository uses **Docker** and **Docker Compose** to ensure a consistent environment across all labs, assignments, and projects.
 
-### 1️ Clone the Repository
+### 1️. Clone the Repository
 ```bash
 git clone git@github.com:govanzz/MLE.git
 cd MLE
 ```
 
-### 2️ Navigate to a Lab/Assignment
+### 2️. Navigate to a Lab/Assignment
 Each lab, assignment, or project will have its own folder (e.g., `lab_1`, `assignment_1`, `project`).
 
 ```bash
 cd lab_1
 ```
-### 3️ Build the Docker Image
+### 3️. Build the Docker Image
 
 Run this once (or whenever the `Dockerfile` or `requirements.txt` changes):
 
@@ -48,7 +48,7 @@ Run this once (or whenever the `Dockerfile` or `requirements.txt` changes):
 docker-compose build
 ```
 
-### 4️⃣ Start the Environment
+### 4️. Start the Environment
 
 This launches JupyterLab and other services defined in `docker-compose.yml`:
 
@@ -57,7 +57,7 @@ docker-compose up -d
 ```
 Then open JupyterLab at 👉 http://127.0.0.1:8888 or something similar
 
-### 5️⃣ Stop the Environment Safely
+### 5️. Stop the Environment Safely
 
 When finished, stop and remove containers:
 
