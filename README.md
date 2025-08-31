@@ -14,7 +14,7 @@ I will gain the competency to build and run **production-grade ML systems on the
 
 ## My Learning Goals
 
-Through this course, I aim to go beyond just applying ML models — I will be **able to engineer complete ML systems** that can run reliably in real-world environments. Specifically, by the end of this course I will be able to:
+Through this course, I aim to go beyond just applying ML models I will be **able to engineer complete ML systems** that can run reliably in real-world environments. Specifically, by the end of this course I will be able to:
 
 - Strengthen my understanding of how to **take ML from experimentation to production**, not just stop at model accuracy.  
 - Design **reproducible ML pipelines** that handle data ingestion, cleaning, feature engineering, and training in an automated way.  
