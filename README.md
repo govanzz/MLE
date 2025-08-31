@@ -21,4 +21,4 @@ Through this course, I aim to go beyond just applying ML models I will be **able
 - Work confidently with **Docker, orchestration tools, and CI/CD pipelines**, so that deploying ML models feels as natural as training them.  
 - Apply **monitoring strategies** to detect model drift, data quality issues, and bias in deployed systems.  
 - Extend **MLOps practices** not only to traditional ML models but also to **Generative AI** projects.  
-- Think like an **engineer first, data scientist second** — ensuring reliability, scalability, and maintainability in every project I build.  
+- Think like an **engineer first, data scientist second** ensuring reliability, scalability, and maintainability in every project I build.  
