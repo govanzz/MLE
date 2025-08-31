@@ -21,4 +21,47 @@ Through this course, I aim to go beyond just applying ML models I will be **able
 - Work confidently with **Docker, orchestration tools, and CI/CD pipelines**, so that deploying ML models feels as natural as training them.  
 - Apply **monitoring strategies** to detect model drift, data quality issues, and bias in deployed systems.  
 - Extend **MLOps practices** not only to traditional ML models but also to **Generative AI** projects.  
-- Think like an **engineer first, data scientist second** ensuring reliability, scalability, and maintainability in every project I build.  
+- Think like an **engineer first, data scientist second** ensuring reliability, scalability, and maintainability in every project I build.
+
+---
+##  How to Run
+
+This repository uses **Docker** and **Docker Compose** to ensure a consistent environment across all labs, assignments, and projects.
+
+### 1️ Clone the Repository
+```bash
+git clone git@github.com:govanzz/MLE.git
+cd MLE
+```
+
+### 2️ Navigate to a Lab/Assignment
+Each lab, assignment, or project will have its own folder (e.g., `lab_1`, `assignment_1`, `project`).
+
+```bash
+cd lab_1
+```
+### 3️ Build the Docker Image
+
+Run this once (or whenever the `Dockerfile` or `requirements.txt` changes):
+
+```bash
+docker-compose build
+```
+
+### 4️⃣ Start the Environment
+
+This launches JupyterLab and other services defined in `docker-compose.yml`:
+
+```bash
+docker-compose up -d
+```
+Then open JupyterLab at 👉 http://127.0.0.1:8888 or something similar
+
+### 5️⃣ Stop the Environment Safely
+
+When finished, stop and remove containers:
+
+```bash
+docker-compose down
+```
+
