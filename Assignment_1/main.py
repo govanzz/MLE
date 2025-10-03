@@ -17,6 +17,8 @@ from utils.data_processing_bronze_all import process_bronze_all_monthly_csv
 # Silver processors
 from utils.data_processing_silver_attributes import process_silver_attributes
 from utils.data_processing_silver_clickstream import process_silver_clickstream
+from utils.data_processing_silver_financials import process_silver_financials
+
 #  existing label silver 
 from utils.data_processing_silver_table import process_silver_table as process_silver_label
 
@@ -91,6 +93,14 @@ if __name__ == "__main__":
             silver_clickstream_directory=os.path.join(SILVER_FEATURES_DIR, "clickstream/"),
             spark=spark
         )
+        # ---- Silver: financials (features) ----
+        process_silver_financials(
+            snapshot_date_str=ds,
+            bronze_financials_directory=os.path.join(BRONZE_FEATURES_DIR, "financials/"),
+            silver_financials_directory=os.path.join(SILVER_FEATURES_DIR, "financials/"),
+            spark=spark
+        )
+
 
     spark.stop()
     print("\n[DONE] Silver build complete.")
