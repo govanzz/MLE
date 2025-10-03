@@ -1,36 +1,108 @@
 # utils/data_processing_bronze_all.py
-# Combined Bronze ingest for: LMS (labels source) + Feature datasets
+# Bronze monthly CSVs for: clickstream, attributes, financials, lms_loan_daily
+# - One CSV per month per dataset, file name includes YYYY_MM_DD
+# - Minimal lineage columns on features: ingest_dt, snap_ym, source_file
 
-# --- SINGLE-TABLE BRONZE  PARQUET --------------------
+
 import os
+import glob
+import shutil
 from datetime import datetime
 import pyspark.sql.functions as F
-
+from pyspark.sql.functions import col
 def _ensure_dir(p: str):
     os.makedirs(p, exist_ok=True)
 
+def _ym(date_str: str) -> str:
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    return f"{dt.year:04d}-{dt.month:02d}"
+
+def _ymd(date_str: str) -> str:
+    return date_str.replace("-", "_")
+
 def _find_file(raw_dir: str, candidates):
-    for name in candidates:
-        p = os.path.join(raw_dir, name)
+    for n in candidates:
+        p = os.path.join(raw_dir, n)
         if os.path.exists(p):
             return p
     return None
 
-def _write_parquet_overwrite(df, out_dir: str):
-    _ensure_dir(out_dir)
-    # No partitioning; single logical table as a Parquet dataset directory
-    (df.write
-       .mode("overwrite")
-       .parquet(out_dir))
-    print(f"[BRONZE][OK] wrote PARQUET: {out_dir}")
+def _write_single_csv_spark(df, out_csv: str):
+    tmp_dir = out_csv + "_tmpdir"
+    if os.path.exists(tmp_dir):
+        shutil.rmtree(tmp_dir)
+    (df.coalesce(1)
+       .write.mode("overwrite")
+       .option("header", True)
+       .csv(tmp_dir))
+    part = glob.glob(os.path.join(tmp_dir, "part-*.csv"))
+    _ensure_dir(os.path.dirname(out_csv))
+    if part:
+        shutil.move(part[0], out_csv)
+    shutil.rmtree(tmp_dir, ignore_errors=True)
 
-def process_bronze_features_single_parquet(bronze_features_dir: str, raw_dir: str, spark):
+# ---------- unified snapshot filter ----------
+def _filter_by_snapshot_date(df, snapshot_date_str: str):
     """
-    Writes ONE Parquet dataset per feature:
-      datamart/bronze/features/clickstream/
-      datamart/bronze/features/attributes/
-      datamart/bronze/features/financials/
+    Filter rows where snapshot_date == <snapshot_date_str>.
+    Works whether snapshot_date is string, date, or timestamp.
     """
+    if "snapshot_date" not in df.columns:
+        raise ValueError("Expected column 'snapshot_date' not found in input CSV.")
+    return (
+        df.withColumn("snapshot_date", F.to_date("snapshot_date"))
+          .filter(F.col("snapshot_date") == F.to_date(F.lit(snapshot_date_str)))
+    )
+
+# ---------- LMS (labels source) ----------
+def process_bronze_lms_monthly_csv(snapshot_date_str: str, bronze_lms_directory: str, spark):
+    _ensure_dir(bronze_lms_directory)
+    src = "data/lms_loan_daily.csv"
+
+    df = (spark.read.option("header", True).option("inferSchema", True).csv(src))
+    df = _filter_by_snapshot_date(df, snapshot_date_str)
+
+    # lineage
+    df = (df
+          .withColumn("ingest_dt", F.current_date())
+          .withColumn("snap_ym", F.lit(_ym(snapshot_date_str)))
+          .withColumn("source_file", F.lit(os.path.basename(src))))
+
+    print(f"[BRONZE][lms] {snapshot_date_str} rows={df.count()}")
+    out_csv = os.path.join(bronze_lms_directory, f"bronze_loan_daily_{_ymd(snapshot_date_str)}.csv")
+    _write_single_csv_spark(df, out_csv)
+    print(f"[BRONZE][lms] saved to: {out_csv}")
+
+# ---------- Features (clickstream / attributes / financials) ----------
+def _bronze_features_one_month(dataset_name: str, src_path: str, snapshot_date_str: str,
+                               bronze_features_dir: str, spark):
+    df = (spark.read
+              .option("header", True)
+              .option("inferSchema", True)
+              .option("mode", "PERMISSIVE")
+              .option("quote", '"').option("escape", '"')
+              .option("multiLine", True)
+              .csv(src_path))
+
+    df = _filter_by_snapshot_date(df, snapshot_date_str)
+
+    # lineage
+    df = (df
+          .withColumn("ingest_dt", F.current_date())
+          .withColumn("snap_ym", F.lit(_ym(snapshot_date_str)))
+          .withColumn("source_file", F.lit(os.path.basename(src_path))))
+
+    out_csv = os.path.join(
+        bronze_features_dir,
+        dataset_name,
+        f"bronze_{dataset_name}_{_ymd(snapshot_date_str)}.csv"
+    )
+    print(f"[BRONZE][{dataset_name}] {snapshot_date_str} rows={df.count()}")
+    _ensure_dir(os.path.dirname(out_csv))
+    _write_single_csv_spark(df, out_csv)
+    print(f"[BRONZE][{dataset_name}] saved to: {out_csv}")
+
+def process_bronze_features_monthly_csv(snapshot_date_str: str, bronze_features_dir: str, raw_dir: str, spark):
     _ensure_dir(bronze_features_dir)
     clickstream_path = _find_file(raw_dir, ["feature_clickstream.csv"])
     attributes_path  = _find_file(raw_dir, ["feature_attributes.csv", "features_attributes.csv"])
@@ -41,54 +113,16 @@ def process_bronze_features_single_parquet(bronze_features_dir: str, raw_dir: st
         "attributes":  attributes_path,
         "financials":  financials_path,
     }
-
     for name, src in datasets.items():
         if not src:
             print(f"[BRONZE][WARN] Missing source for {name}. Skipping.")
             continue
+        _bronze_features_one_month(name, src, snapshot_date_str, bronze_features_dir, spark)
 
-        print(f"[BRONZE][INFO] Ingesting {name} from {src}")
-        df = (spark.read
-                 .option("header", True)
-                 .option("inferSchema", True)
-                 .option("mode", "PERMISSIVE")
-                 .option("quote", '"')
-                 .option("escape", '"')
-                 .option("multiLine", True)
-                 .csv(src)
-             ) \
-             .withColumn("ingest_dt", F.current_date()) \
-             .withColumn("source_file", F.lit(os.path.basename(src)))
-
-        out_dir = os.path.join(bronze_features_dir, name)  # e.g., .../features/clickstream
-        _write_parquet_overwrite(df, out_dir)
-        print(f"[BRONZE][{name}] rows={df.count()} cols={len(df.columns)}")
-
-def process_bronze_lms_single_parquet(bronze_lms_directory: str, raw_dir: str, spark):
-    """
-    Writes ONE Parquet dataset for LMS:
-      datamart/bronze/lms/loan_daily/
-    """
-    _ensure_dir(bronze_lms_directory)
-    src = os.path.join(raw_dir, "lms_loan_daily.csv")
-    if not os.path.exists(src):
-        print("[BRONZE][WARN] Missing data/lms_loan_daily.csv")
-        return
-
-    print(f"[BRONZE][INFO] Ingesting LMS from {src}")
-    df = (spark.read
-             .option("header", True)
-             .option("inferSchema", True)
-             .option("mode", "PERMISSIVE")
-             .csv(src)
-         ) \
-         .withColumn("ingest_dt", F.current_date()) \
-         .withColumn("source_file", F.lit(os.path.basename(src)))
-
-    out_dir = os.path.join(bronze_lms_directory, "loan_daily")  # e.g., .../bronze/lms/loan_daily/
-    _write_parquet_overwrite(df, out_dir)
-    print(f"[BRONZE][lms] rows={df.count()} cols={len(df.columns)}")
-
-def process_bronze_all_single_parquet(bronze_features_dir: str, bronze_lms_directory: str, raw_dir: str, spark):
-    process_bronze_features_single_parquet(bronze_features_dir, raw_dir, spark)
-    process_bronze_lms_single_parquet(bronze_lms_directory, raw_dir, spark)
+def process_bronze_all_monthly_csv(snapshot_date_str: str,
+                                   bronze_features_dir: str,
+                                   bronze_lms_directory: str,
+                                   raw_dir: str,
+                                   spark):
+    process_bronze_features_monthly_csv(snapshot_date_str, bronze_features_dir, raw_dir, spark)
+    process_bronze_lms_monthly_csv(snapshot_date_str, bronze_lms_directory, spark)
