@@ -1,4 +1,4 @@
-# main.py — Assignment 1 Orchestrator (Bronze -> Silver -> Gold)
+# datapipeline.py — Assignment 1 Orchestrator (Bronze -> Silver -> Gold)
 import os
 import glob
 import argparse
