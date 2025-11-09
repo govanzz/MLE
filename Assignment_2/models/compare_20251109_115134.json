@@ -1,0 +1,16 @@
+[
+  {
+    "model": "logreg",
+    "bundle": "models/logreg_pipeline_20251109_115134.joblib",
+    "roc_auc_valid": 0.7115451014242555,
+    "pr_auc_valid": 0.4713905561676018,
+    "tuned_threshold": 0.2947676850754384
+  },
+  {
+    "model": "xgb",
+    "bundle": "models/xgb_bundle_20251109_115134.joblib",
+    "roc_auc_valid": 0.9293698748381528,
+    "pr_auc_valid": 0.8712645168158993,
+    "tuned_threshold": 0.47986850142478943
+  }
+]
